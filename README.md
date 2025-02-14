@@ -55,3 +55,5 @@ Para más información, consulte la documentación en la carpeta docs/:
 • Guía de Instalación 
 • Manual de Usuario 
 • Documentación API
+
+
