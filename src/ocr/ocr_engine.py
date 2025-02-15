@@ -12,19 +12,21 @@ from config.settings import (
     CONFIDENCE_THRESHOLD
 )
 
+
+from .model_setup import ModelSetup
+
 class OCREngine:
     """Clase para manejar el procesamiento OCR de documentos."""
     
     def __init__(self):
         """Inicializa el motor OCR."""
         try:
-            self.reader = easyocr.Reader(
-                OCR_LANGUAGES,
-                gpu=OCR_GPU,
-                model_storage_directory=OCR_MODEL_STORAGE
-            )
+            self.model_setup = ModelSetup()
+            self.reader = self.model_setup.initialize_model()
+            if not self.model_setup.verify_model_files():
+                logging.warning("Algunos archivos del modelo podrían faltar")
         except Exception as e:
-            logging.error(f"Error inicializando EasyOCR: {str(e)}")
+            logging.error(f"Error inicializando OCR Engine: {str(e)}")
             raise
 
     def detect_document_type(self, text_results: List[Dict]) -> str:
@@ -48,45 +50,46 @@ class OCREngine:
 
     def extract_fields(self, text_results: List[Dict], document_type: str) -> Dict:
         """
-        Extrae campos específicos según el tipo de documento.
+        Extrae campos específicos de los resultados del OCR.
         
         Args:
             text_results (List[Dict]): Lista de resultados OCR
-            document_type (str): Tipo de documento
+            document_type (str): Tipo de documento ('AGUA' o 'LUZ')
             
         Returns:
             Dict: Campos extraídos
         """
         fields = {}
-        text_combined = ' '.join([result['text'] for result in text_results])
         
-        # Extraer matrícula
-        if 'matricula' in PATTERNS:
-            matricula_match = re.search(PATTERNS['matricula'], text_combined)
-            if matricula_match:
-                fields['matricula'] = matricula_match.group(0)
+        # Filtrar resultados por nivel de confianza
+        valid_results = [
+            result for result in text_results 
+            if result.get('confidence', 0) >= CONFIDENCE_THRESHOLD
+        ]
         
-        # Extraer fechas
-        date_matches = re.finditer(PATTERNS['date'], text_combined)
-        for match in date_matches:
-            date_text = match.group(0)
-            # Asignar fecha según contexto
-            if 'fecha de la factura' in text_combined.lower():
-                fields['fecha_factura'] = date_text
-            elif 'fecha limite' in text_combined.lower():
-                fields['fecha_vencimiento'] = date_text
-            elif 'fecha de emisión' in text_combined.lower():
-                fields['fecha_emision'] = date_text
+        # Si no hay resultados válidos, retornar diccionario vacío
+        if not valid_results:
+            return fields
+            
+        text_combined = ' '.join([result['text'] for result in valid_results])
         
-        # Extraer monto total
-        amount_matches = re.finditer(PATTERNS['amount'], text_combined)
-        for match in amount_matches:
-            amount_text = match.group(0)
-            if 'total' in text_combined.lower():
-                fields['total'] = amount_text.replace('$', '').replace(',', '')
+        # Extraer fecha
+        fecha_match = re.search(r'Fecha de (?:la )?(?:factura|Emisión):\s*(.+?)(?=\s|$)', text_combined)
+        if fecha_match:
+            fields['fecha_emision'] = fecha_match.group(1).strip()
+        
+        # Extraer total
+        total_match = re.search(r'TOTAL(?:\sA PAGAR)?:?\s*\$?\s*([\d,]+)', text_combined)
+        if total_match:
+            fields['total'] = total_match.group(1).strip()
+        
+        # Extraer matrícula si está presente
+        matricula_match = re.search(r'MATRÍCULA\s*(?:>>)?\s*(\d+)', text_combined)
+        if matricula_match:
+            fields['matricula'] = matricula_match.group(1).strip()
         
         return fields
-
+    
     def validate_fields(self, fields: Dict, document_type: str) -> bool:
         """
         Valida que estén todos los campos requeridos según el tipo de documento.
@@ -107,32 +110,27 @@ class OCREngine:
     def process_image(self, image) -> Dict:
         """
         Procesa una imagen y extrae la información relevante.
-        
-        Args:
-            image: Imagen procesada
-            
-        Returns:
-            Dict: Información extraída y validada
         """
         try:
             # Extraer texto de la imagen
-            results = self.reader.readtext(
-                image,
-                detail=1,
-                paragraph=True
-            )
-            
-            # Convertir resultados a formato estandarizado
-            text_results = [
-                {
-                    'text': result[1],
-                    'confidence': result[2],
-                    'bbox': result[0]
-                }
-                for result in results
-                if result[2] >= CONFIDENCE_THRESHOLD
-            ]
-            
+            if isinstance(image, list):  # Si recibimos resultados pre-procesados
+                text_results = image
+            else:  # Si recibimos una imagen
+                results = self.reader.readtext(
+                    image,
+                    detail=1,
+                    paragraph=True
+                )
+                text_results = [
+                    {
+                        'text': result[1],
+                        'confidence': result[2],
+                        'bbox': result[0]
+                    }
+                    for result in results
+                    if result[2] >= CONFIDENCE_THRESHOLD
+                ]
+
             # Detectar tipo de documento
             document_type = self.detect_document_type(text_results)
             
@@ -146,7 +144,7 @@ class OCREngine:
                 'document_type': document_type,
                 'fields': fields,
                 'is_valid': is_valid,
-                'confidence': sum(r['confidence'] for r in text_results) / len(text_results)
+                'confidence': sum(r['confidence'] for r in text_results) / len(text_results) if text_results else 0
             }
             
         except Exception as e:
