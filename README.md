@@ -1,7 +1,7 @@
 # Proyecto OCR - Procesamiento de Documentos
 
 ## Requisitos previos
-- Python 3.8 o superior
+- Python 3.9 o superior
 - UV (Astral) instalado
 
 ## Instalación
