@@ -11,9 +11,7 @@ DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 RAW_DATA_DIR = os.path.join(DATA_DIR, 'raw')
 PROCESSED_DATA_DIR = os.path.join(DATA_DIR, 'processed')
 
-# Asegurarse de que los directorios existan
-os.makedirs(RAW_DATA_DIR, exist_ok=True)
-os.makedirs(PROCESSED_DATA_DIR, exist_ok=True)
+
 
 # Configuraciones de archivos
 ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'pdf']
@@ -28,6 +26,11 @@ OCR_MODEL_STORAGE = os.path.join(PROJECT_ROOT, 'models')
 IMAGE_MIN_SIZE = 800  # Tamaño mínimo del lado más corto
 IMAGE_MAX_SIZE = 2400  # Tamaño máximo del lado más largo
 IMAGE_QUALITY = 90  # Calidad de imagen procesada (0-100)
+
+# Asegurarse de que los directorios existan
+os.makedirs(RAW_DATA_DIR, exist_ok=True)
+os.makedirs(PROCESSED_DATA_DIR, exist_ok=True)
+os.makedirs(OCR_MODEL_STORAGE, exist_ok=True)
 
 # Configuraciones de la aplicación web
 STREAMLIT_TITLE = "Sistema de Procesamiento de Documentos"
