@@ -13,6 +13,10 @@ test:
   stage: test
   script:
     - pytest tests/ --verbose --junitxml=report.xml  # Ejecuta las pruebas con pytest
+  
   artifacts:
     reports:
       junit: report.xml  # Guarda el reporte de pruebas en GitLab
+  only:
+    - main
+    - dev
