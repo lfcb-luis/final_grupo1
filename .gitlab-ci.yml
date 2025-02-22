@@ -1,0 +1,18 @@
+image: python:3.9  # Usa una imagen de Python compatible
+
+stages:
+  - test
+
+before_script:
+  - python -m venv .venv  # Crea un entorno virtual
+  - source .venv/bin/activate  # Activa el entorno virtual (en Linux/macOS)
+  - pip install --upgrade pip
+  - pip install -r requirements.txt  # Instala las dependencias
+
+test:
+  stage: test
+  script:
+    - pytest tests/ --verbose --junitxml=report.xml  # Ejecuta las pruebas con pytest
+  artifacts:
+    reports:
+      junit: report.xml  # Guarda el reporte de pruebas en GitLab
