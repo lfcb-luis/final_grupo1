@@ -15,7 +15,8 @@ from config.settings import (
     OCR_GPU, 
     OCR_MODEL_STORAGE,
     STREAMLIT_TITLE, 
-    STREAMLIT_DESCRIPTION
+    STREAMLIT_DESCRIPTION,
+    CONFIDENCE_THRESHOLD
 )
 
 class OCRApp:
@@ -130,6 +131,11 @@ class OCRApp:
             # Extraer texto
             results = self.reader.readtext(enhanced)
             
+            # Debugging: Print all detected text
+            st.write("🔍 Texto detectado por OCR:")
+            for box, text, conf in results:
+                st.write(f"📜 {text} (Confianza: {conf:.2f})")
+            
             # Convertir resultados
             text_blocks = [
                 {
@@ -138,7 +144,7 @@ class OCRApp:
                     'bbox': box
                 }
                 for box, text, conf in results
-                if conf > 0.5
+                if conf > CONFIDENCE_THRESHOLD
             ]
             
             # Extraer campos
