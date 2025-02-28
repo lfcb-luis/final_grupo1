@@ -9,7 +9,8 @@ class FeatureExtractor:
         """Inicializa los patrones de extracción para campos comunes en cualquier factura."""
         # Patrones base que deberían funcionar en cualquier factura
         self.patrones_base = {
-            'identificacion': r'(?:Nro\.? (?:de )?(?:identificación|documento)|ID|NIT|MATRÍCULA|código)[\s:>>]*([A-Z0-9-]+)',
+            #'identificacion': r'(?:Nro\.? (?:de )?(?:identificación|documento)|ID|NIT|MATRÍCULA|código)[\s:>>]*([A-Z0-9-]+)',
+            'identificacion': r'(?:Nro\.?\s*(?:de\s*)?)?\b\w*(?:NIT|ID|MATRÍCULA|código|identificación|documento)\w*\b[\s:>>]*([A-Z0-9-]+)', #Modificación del patron para permitir matches parciales
             
             'fecha_expedicion': (
                 r'(?:generada|expedida|emisión|emitido|fecha)(?:\s+(?:de|el))?\s*'
@@ -18,11 +19,11 @@ class FeatureExtractor:
             ),
             
             'fecha_vencimiento': (
-                r'(?:vence|vencimiento|pagar hasta|límite|plazo|si no pagas antes de)'
-                r'[:\s]*(\d{1,2}[-/\s][A-Za-z]{3,10}[-/\s]\d{4}|\d{1,2}[-/]\d{1,2}[-/]\d{4})'
+                r'(?:vence|vencimiento|pagar hasta|límite|plazo|si no pagas antes de|fecha de pago oportuno)[:\s]*(\d{1,2}\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{4}(?:-\d{4})?)'
             ),
+
             
-            'total': r'(?:total|valor total|total a pagar|valor a pagar)[:\s]*\$?\s*([\d,.]+)',
+            'total': r'(?:total|valor total|total a pagar|valor a pagar|pago total)[:\s]*\$?\s*([\d,.]+)',
         }
         
         # Patrones adicionales específicos por tipo de documento
@@ -82,9 +83,11 @@ class FeatureExtractor:
         """Limpia y formatea el valor según el tipo de campo."""
         value = value.strip()
         
-        if field_type in ['total', 'energia', 'alumbrado']:
+        """Remover total de la función clean_values para preservar el formato de la moneda."""
+        
+        if field_type in ['energia', 'alumbrado']:
             # Eliminar símbolos de moneda, comas y puntos
-            cleaned = re.sub(r'[^\d]', '', value)  # Elimina todo excepto dígitos
+            cleaned = re.sub(r'[^\d]', '', value)  # Elimina todo excepto dígitos 
             return cleaned
             
         elif field_type.startswith('fecha'):
@@ -109,8 +112,8 @@ class FeatureExtractor:
             'gas': ['gas natural', 'consumo de gas', 'efigas'],
             'luz': ['energía eléctrica', 'consumo de energía', 'alumbrado'],
             'agua': ['acueducto', 'consumo de agua', 'alcantarillado'],
-            'telefono': ['plan móvil', 'telefonía', 'minutos'],
-            'internet': ['megabytes', 'fibra óptica', 'banda ancha']
+            'telefono': ['plan móvil', 'telefonía', 'minutos', 'telecomunicaciones'],
+            'internet': ['megabytes', 'fibra óptica', 'banda ancha', 'telecomunicaciones']
         }
         
         for doc_type, words in keywords.items():

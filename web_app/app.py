@@ -15,7 +15,8 @@ from config.settings import (
     OCR_GPU, 
     OCR_MODEL_STORAGE,
     STREAMLIT_TITLE, 
-    STREAMLIT_DESCRIPTION
+    STREAMLIT_DESCRIPTION,
+    CONFIDENCE_THRESHOLD
 )
 
 class OCRApp:
@@ -138,7 +139,7 @@ class OCRApp:
                     'bbox': box
                 }
                 for box, text, conf in results
-                if conf > 0.5
+                if conf > CONFIDENCE_THRESHOLD
             ]
             
             # Extraer campos

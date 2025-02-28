@@ -40,20 +40,27 @@ para la digitalización y extracción estructurada de información de facturas y
 """
 
 # Configuraciones de validación
-CONFIDENCE_THRESHOLD = 0.85  # Umbral de confianza para la extracción de texto
+CONFIDENCE_THRESHOLD = 0.65  # Umbral de confianza para la extracción de texto
 
 # Formatos de fecha encontrados en las facturas
 DATE_FORMATS = [
     '%d-%b-%Y',    # 18-Abr-2024
     '%d/%b/%Y',    # 17/MAY/2024
-    '%Y-%m-%d'     # 2024-04-01
+    '%Y-%m-%d',     # 2024-04-01
+    '%d de %B de %Y', # 17 of May of 2024
+    '%B %d-%Y'  # Marzo 18-2024
 ]
 
 # Patrones de expresiones regulares para validación
 PATTERNS = {
     # Patrones de fechas encontrados en las facturas
-    'date': r'(?:\d{2}-[A-Za-z]{3}-\d{4}|\d{2}/[A-Za-z]{3}/\d{4}|\d{4}-\d{2}-\d{2})',
-    
+    'date': (
+        r'(?:\d{2}-[A-Za-z]{3}-\d{4}|'  # 18-Abr-2024
+        r'\d{2}/[A-Za-z]{3}/\d{4}|'  # 17/MAY/2024
+        r'\d{4}-\d{2}-\d{2}|'  # 2024-04-01
+        r'(?i)\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+de\s+\d{4}|'  # 22 de Mayo de 2024
+        r'(?i)(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{1,2}-\d{4}'  # Marzo 18-2024 
+    ),
     # Patrón para totales (considerando los formatos vistos: $8,640 y $35,643)
     'amount': r'\$\s*\d{1,3}(?:,\d{3})*(?:\.\d{1,3})?',
     
@@ -61,7 +68,7 @@ PATTERNS = {
     'matricula': r'\b\d{7}\b',
     
     # Patrón para fecha de vencimiento
-    'due_date': r'(?:Fecha limite sin recargo:|Tengo plazo para pagar hasta:)\s*([\d/-]+[A-Za-z/-]+\d{4})',
+    'due_date': r'(?:Fecha limite sin recargo:|Tengo plazo para pagar hasta:|Fecha de pago oportuno:)\s*([\d/-]+[A-Za-z/-]+\d{4}|(?i)\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+de\s+\d{4})',
 }
 
 # Tipos de documentos soportados

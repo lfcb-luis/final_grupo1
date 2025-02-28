@@ -77,8 +77,8 @@ tenacity==8.5.0
 tifffile==2024.8.30
 toml==0.10.2
 tomli==2.2.1
-torch==2.6.0
-torchvision==0.21.0
+torch==2.0.0
+torchvision==0.11.0
 tornado==6.4.2
 triton==3.2.0
 typing-extensions==4.12.2
