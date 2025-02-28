@@ -131,11 +131,6 @@ class OCRApp:
             # Extraer texto
             results = self.reader.readtext(enhanced)
             
-            # Debugging: Print all detected text
-            st.write("🔍 Texto detectado por OCR:")
-            for box, text, conf in results:
-                st.write(f"📜 {text} (Confianza: {conf:.2f})")
-            
             # Convertir resultados
             text_blocks = [
                 {

@@ -19,9 +19,9 @@ class FeatureExtractor:
             ),
             
             'fecha_vencimiento': (
-                r'(?:vence|vencimiento|pagar hasta|límite|plazo|si no pagas antes de|fecha de pago oportuno)'
-                r'[:\s]*(\d{1,2}\s+de\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+de\s+\d{4})'
+                r'(?:vence|vencimiento|pagar hasta|límite|plazo|si no pagas antes de|fecha de pago oportuno)[:\s]*(\d{1,2}\s+(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{4}(?:-\d{4})?)'
             ),
+
             
             'total': r'(?:total|valor total|total a pagar|valor a pagar|pago total)[:\s]*\$?\s*([\d,.]+)',
         }
