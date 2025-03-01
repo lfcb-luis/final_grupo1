@@ -4,10 +4,11 @@ stages:
   - test
 
 before_script:
-  - python -m venv .venv  # Crea un entorno virtual
-  - source .venv/bin/activate  # Activa el entorno virtual (en Linux/macOS)
+  - python -m venv .venv
+  - source .venv/bin/activate
   - pip install --upgrade pip
-  - pip install -r requirements.txt  # Instala las dependencias
+  - pip install -r requirements.txt
+  - pip install -e .  # Esta línea es crucial para instalar tu paquete
 
 test:
   stage: test
