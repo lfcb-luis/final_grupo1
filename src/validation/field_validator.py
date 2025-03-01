@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 import logging
 from typing import Dict, Union, List
-from config.settings import DATE_FORMATS, PATTERNS, DOCUMENT_TYPES
+from config.settings import DATE_FORMATS, PATTERNS
 
 class FieldValidator:
     """Clase para validar los campos extraídos del OCR."""
@@ -39,7 +39,7 @@ class FieldValidator:
             bool: True si el monto es válido
         """
         # Eliminar símbolos de moneda y espacios
-        amount_str = amount_str.replace('$', '').replace(' ', '')
+        amount_str = str(amount_str).replace('$', '').replace(' ', '')
         
         # Verificar formato con comas y decimales opcionales
         pattern = r'^\d{1,3}(,\d{3})*(\.\d{1,2})?$'
@@ -56,15 +56,16 @@ class FieldValidator:
         Returns:
             bool: True si la matrícula es válida
         """
-        return bool(re.match(PATTERNS['matricula'], matricula))
+        # Usar un patrón genérico si no se especifica en PATTERNS
+        matricula_pattern = PATTERNS.get('matricula', r'^[A-Z0-9-]+$')
+        return bool(re.match(matricula_pattern, str(matricula)))
 
-    def validate_fields(self, fields: Dict, document_type: str) -> Dict[str, Union[bool, List[str]]]:
+    def validate_fields(self, fields: Dict) -> Dict[str, Union[bool, List[str]]]:
         """
-        Valida todos los campos extraídos según el tipo de documento.
+        Valida todos los campos extraídos.
         
         Args:
             fields (Dict): Campos extraídos
-            document_type (str): Tipo de documento
             
         Returns:
             Dict: Resultado de la validación con errores si existen
@@ -74,35 +75,23 @@ class FieldValidator:
             'errors': []
         }
 
-        if document_type not in DOCUMENT_TYPES:
-            validation_result['is_valid'] = False
-            validation_result['errors'].append(f"Tipo de documento no válido: {document_type}")
-            return validation_result
+        # Campos que esperamos encontrar, pero no como requeridos
+        optional_fields = ['fecha_expedicion', 'fecha_vencimiento', 'total']
 
-        required_fields = DOCUMENT_TYPES[document_type]['campos_requeridos']
+        # Validar cada campo si está presente
+        for field in optional_fields:
+            if field in fields:
+                if 'fecha' in field:
+                    if not self.validate_date(fields[field]):
+                        validation_result['is_valid'] = False
+                        validation_result['errors'].append(f"Formato de fecha inválido: {field}")
 
-        # Verificar campos requeridos
-        for field in required_fields:
-            if field not in fields:
-                validation_result['is_valid'] = False
-                validation_result['errors'].append(f"Campo requerido faltante: {field}")
-                continue
-
-            # Validar según tipo de campo
-            if 'fecha' in field:
-                if not self.validate_date(fields[field]):
-                    validation_result['is_valid'] = False
-                    validation_result['errors'].append(f"Formato de fecha inválido: {field}")
-
-            elif field == 'total':
-                if not self.validate_amount(fields[field]):
-                    validation_result['is_valid'] = False
-                    validation_result['errors'].append(f"Formato de monto inválido: {field}")
-
-            elif field == 'matricula':
-                if not self.validate_matricula(fields[field]):
-                    validation_result['is_valid'] = False
-                    validation_result['errors'].append(f"Formato de matrícula inválido")
+                elif field == 'total':
+                    # Convertir a string por si acaso ya es un número
+                    total_str = str(fields[field])
+                    if not self.validate_amount(total_str):
+                        validation_result['is_valid'] = False
+                        validation_result['errors'].append(f"Formato de monto inválido: {field}")
 
         return validation_result
 
@@ -118,7 +107,7 @@ class FieldValidator:
         """
         try:
             # Eliminar símbolos de moneda y espacios
-            amount_str = amount_str.replace('$', '').replace(' ', '')
+            amount_str = str(amount_str).replace('$', '').replace(' ', '')
             # Eliminar comas
             amount_str = amount_str.replace(',', '')
             return float(amount_str)

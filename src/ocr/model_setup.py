@@ -1,4 +1,3 @@
-# src/ocr/model_setup.py
 import os
 import logging
 from pathlib import Path
@@ -20,11 +19,20 @@ class ModelSetup:
             
             logging.info("Iniciando configuración del modelo OCR...")
             
+            # Configuración adicional para evitar warnings de Torch
+            import torch
+            torch.set_num_threads(1)  # Limitar hilos de torch
+            
+            # Deshabilitar el seguimiento de operaciones de torch
+            torch.autograd.set_detect_anomaly(False)
+            torch.autograd.profiler.profile(enabled=False)
+            
             # Inicializar EasyOCR
             reader = easyocr.Reader(
                 lang_list=OCR_LANGUAGES,
                 gpu=OCR_GPU,
-                model_storage_directory=OCR_MODEL_STORAGE
+                model_storage_directory=OCR_MODEL_STORAGE,
+                download_enabled=True  # Asegurar descarga de modelos
             )
             
             logging.info("Modelo OCR inicializado correctamente")
@@ -32,6 +40,8 @@ class ModelSetup:
             
         except Exception as e:
             logging.error(f"Error inicializando el modelo OCR: {str(e)}")
+            import traceback
+            logging.error(traceback.format_exc())
             raise
 
     @staticmethod

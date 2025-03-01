@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 .env
+
+#modelos
+models/latin.pth

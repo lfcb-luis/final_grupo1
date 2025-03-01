@@ -4,6 +4,14 @@
 - Python 3.9 o superior
 - UV (Astral) instalado
 
+👅 **[Descargar el modelo](https://huggingface.co/xiaoyao9184/easyocr/blob/master/latin.pth)**  
+
+```bash
+mkdir -p models  # Crear la carpeta si no existe
+wget -O models/latin.pth https://huggingface.co/xiaoyao9184/easyocr/blob/master/latin.pth
+```
+Si wget no está disponible, puedes descargarlo manualmente y moverlo a models/
+
 ## Instalación
 
 ### Windows
@@ -111,3 +119,6 @@ El proyecto incluye pruebas para:
 * Diferentes formatos de fecha
 * Diferentes formatos de montos
 * Diferentes tipos de identificadores
+
+
+
