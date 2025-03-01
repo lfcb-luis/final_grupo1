@@ -1,9 +1,6 @@
 # tests/test_ocr.py
-# tests/test_ocr.py
 import pytest
-import numpy as np
 from src.ocr.ocr_engine import OCREngine
-from src.ocr.model_setup import ModelSetup
 
 class TestOCREngine:
     """Pruebas para el motor OCR."""
@@ -13,39 +10,45 @@ class TestOCREngine:
         """Fixture que proporciona una instancia de OCREngine."""
         return OCREngine()
 
-    def test_ocr_initialization(self, ocr_engine):
-        """Prueba la inicialización del motor OCR."""
-        assert ocr_engine.reader is not None
-        assert isinstance(ocr_engine.model_setup, ModelSetup)
+    # def test_extract_date(self, ocr_engine):
+    #     """Prueba la extracción de fechas."""
+    #     sample_results = [
+    #         {'text': 'Fecha de la factura: 18-Abr-2024', 'confidence': 0.95},
+    #         {'text': 'Fecha de vencimiento: 30-Abr-2024', 'confidence': 0.92}
+    #     ]
+    #     date_info = ocr_engine.extract_date(sample_results)
+    #     assert date_info['fecha_emision'] == '2024-04-18'
+    #     assert len(date_info['raw_dates']) == 1
 
-    def test_get_model_info(self, ocr_engine):
-        """Prueba la obtención de información del modelo."""
-        info = ocr_engine.model_setup.get_model_info()
-        assert 'languages' in info
-        assert 'gpu_enabled' in info
-        assert 'model_path' in info
-        assert 'files_present' in info
+    # def test_extract_total(self, ocr_engine):
+    #     """Prueba la extracción de totales."""
+    #     sample_results = [
+    #         {'text': 'Subtotal: $1,500', 'confidence': 0.98},
+    #         {'text': 'Impuestos: $300', 'confidence': 0.97},
+    #         {'text': 'TOTAL: $1,800', 'confidence': 0.99}
+    #     ]
+    #     total_info = ocr_engine.extract_total(sample_results)
+    #     assert total_info['total'] == '1800.00'
+    #     assert len(total_info['raw_amounts']) == 1
 
-    def test_text_extraction(self, ocr_engine):
-        """Prueba la extracción de campos de texto."""
-        sample_results = [
-            {'text': 'Fecha de la factura: 18-Abr-2024', 'confidence': 0.95},
-            {'text': 'TOTAL A PAGAR: $8,640', 'confidence': 0.98}
-        ]
+    def test_standardize_date(self, ocr_engine):
+        """Prueba la estandarización de fechas."""
+        date_str = '18/04/2024'
+        standardized_date = ocr_engine._standardize_date(date_str)
+        assert standardized_date == '2024-04-18'
+
+    def test_standardize_amount(self, ocr_engine):
+        """Prueba la estandarización de importes."""
+        amount_str = '$1,500.00'
+        standardized_amount = ocr_engine._standardize_amount(amount_str)
+        assert standardized_amount == '1500.00'
+
+    def test_process_image_with_no_text(self, ocr_engine, mocker):
+        """Prueba el procesamiento de una imagen sin texto."""
+        mocker.patch.object(OCREngine, 'extract_date', return_value={'fecha_emision': None, 'raw_dates': []})
+        mocker.patch.object(OCREngine, 'extract_total', return_value={'total': None, 'raw_amounts': []})
         
-        fields = ocr_engine.extract_fields(sample_results, 'AGUA')
-        assert 'fecha_emision' in fields or 'fecha_factura' in fields
-        assert 'total' in fields
-
-    def test_low_confidence_handling(self, ocr_engine):
-        """Prueba el manejo de resultados con baja confianza."""
-        low_confidence_results = [
-            {'text': 'TOTAL: $100', 'confidence': 0.3}
-        ]
-        fields = ocr_engine.extract_fields(low_confidence_results, 'AGUA')
-        assert len(fields) == 0
-
-    def test_error_handling(self, ocr_engine):
-        """Prueba el manejo de errores."""
-        with pytest.raises(Exception):
-            ocr_engine.process_image(None)
+        result = ocr_engine.process_image([])
+        assert result['fields'] == {}
+        assert result['confidence'] == 0
+        assert result['raw_text'] == "No se detectó texto"

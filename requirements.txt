@@ -6,6 +6,7 @@ pandas==2.2.1
 pillow==10.2.0
 python-dotenv==1.0.0
 pytest==8.0.2
+pytest-mock==3.14.0
 scikit-image==0.24.0
 python-levenshtein==0.23.0
 openpyxl==3.1.2

@@ -18,7 +18,7 @@ ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'pdf']
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 # Configuraciones de EasyOCR
-OCR_LANGUAGES = ['es']  # Español
+OCR_LANGUAGES = ['es', 'en']  # Español e Inglés
 OCR_GPU = False  # Cambiar a True si se dispone de GPU
 OCR_MODEL_STORAGE = os.path.join(PROJECT_ROOT, 'models')
 
@@ -40,41 +40,53 @@ para la digitalización y extracción estructurada de información de facturas y
 """
 
 # Configuraciones de validación
-CONFIDENCE_THRESHOLD = 0.85  # Umbral de confianza para la extracción de texto
+CONFIDENCE_THRESHOLD = 0.50  # Umbral de confianza para la extracción de texto
 
 # Formatos de fecha encontrados en las facturas
 DATE_FORMATS = [
     '%d-%b-%Y',    # 18-Abr-2024
-    '%d/%b/%Y',    # 17/MAY/2024
-    '%Y-%m-%d'     # 2024-04-01
+    '%d-%b-%y',    # 18-Abr-24
+    '%d-%B-%Y',    # 18-Abril-2024
+    '%d/%b/%Y',    # 18/Abr/2024
+    '%d/%B/%Y',    # 18/Abril/2024
+    '%Y-%m-%d',    # 2024-04-18
+    '%d/%m/%Y',    # 18/04/2024
+    '%m/%d/%Y',    # 04/18/2024
+    '%d-%m-%Y',    # 18-04-2024
+    '%Y/%m/%d',    # 2024/04/18
+    '%d-%b-%Y',
 ]
 
 # Patrones de expresiones regulares para validación
+# Eliminar la configuración de tipos de documentos y reemplazarla con:
+
+# Patrones principales para la extracción
 PATTERNS = {
-    # Patrones de fechas encontrados en las facturas
-    'date': r'(?:\d{2}-[A-Za-z]{3}-\d{4}|\d{2}/[A-Za-z]{3}/\d{4}|\d{4}-\d{2}-\d{2})',
+    # Patrones de fechas mejorados
+    'date': r'(?:\d{1,2}-[A-Za-z]{3}-\d{2,4}|\d{1,2}/[A-Za-z]{3}/\d{2,4}|\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[A-Za-z]{3}\'\d{2}|\d{1,2}/\d{1,2}/\d{2,4})',
     
-    # Patrón para totales (considerando los formatos vistos: $8,640 y $35,643)
-    'amount': r'\$\s*\d{1,3}(?:,\d{3})*(?:\.\d{1,3})?',
+    # Patrón para totales
+    'amount': r'(?:total|balance|due|importe)?\s*(?:\$|€|£)?\s*\d{1,3}(?:[,.]\d{3})*(?:[,.]\d{2})?',
     
-    # Patrón para matrícula (basado en el ejemplo: 2121717)
-    'matricula': r'\b\d{7}\b',
-    
-    # Patrón para fecha de vencimiento
-    'due_date': r'(?:Fecha limite sin recargo:|Tengo plazo para pagar hasta:)\s*([\d/-]+[A-Za-z/-]+\d{4})',
+    # Patrón para identificadores
+    'id': r'\b(?:ID|VAT|NIT|RUT|RFC|No\.|Number)?\s*:?\s*([A-Z0-9][\dA-Z-]{5,})\b',
 }
 
-# Tipos de documentos soportados
-DOCUMENT_TYPES = {
-    'AGUA': {
-        'identificadores': ['servicio de agua', 'PSEACH'],
-        'campos_requeridos': ['fecha_factura', 'total', 'fecha_vencimiento']
-    },
-    'LUZ': {
-        'identificadores': ['ENERGIA', 'ALUMBRADO'],
-        'campos_requeridos': ['matricula', 'fecha_emision', 'total', 'fecha_vencimiento']
-    }
-}
+# Palabras clave para fechas
+DATE_KEYWORDS = [
+    # Español
+    'fecha', 'emisión', 'expedición', 'generada',
+    # Inglés
+    'date', 'issued', 'generated'
+]
+
+# Palabras clave para totales
+TOTAL_KEYWORDS = [
+    # Español
+    'total', 'importe', 'monto', 'pagar', 'balance', 'suma',
+    # Inglés
+    'total', 'amount', 'due', 'balance', 'pay'
+]
 
 # Configuraciones de exportación
 EXPORT_FORMATS = ['json', 'csv']

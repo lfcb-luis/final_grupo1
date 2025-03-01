@@ -5,11 +5,16 @@ import numpy as np
 from PIL import Image
 import os
 import time
+import sys
 from typing import Dict, Any
 import easyocr
 
+
+# Añadir el directorio raíz al path para poder importar módulos
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.preprocessing.image_processor import ImageProcessor
-from src.features.feature_extractor import FeatureExtractor
+from src.ocr.ocr_engine import OCREngine
 from config.settings import (
     OCR_LANGUAGES, 
     OCR_GPU, 
@@ -17,6 +22,11 @@ from config.settings import (
     STREAMLIT_TITLE, 
     STREAMLIT_DESCRIPTION
 )
+
+    # Importación específica
+from src.features.feature_extractor import FeatureExtractor as DocumentProcessor
+
+
 
 class OCRApp:
     def __init__(self):
@@ -30,45 +40,23 @@ class OCRApp:
 
         # Inicializar procesadores
         self.image_processor = ImageProcessor()
-        self.feature_extractor = FeatureExtractor()
+
+         # Inicializar Document Processor
+        self.document_processor = DocumentProcessor()
         
-        # Inicializar EasyOCR con manejo de errores
+        # Inicializar OCR Engine con manejo de errores
         self._initialize_ocr()
 
     def _initialize_ocr(self):
-        """Inicializa el modelo OCR con manejo de errores."""
+        """Inicializa el motor OCR con manejo de errores."""
         try:
-            with st.spinner('⏳ Cargando modelo OCR... (puede tomar unos minutos la primera vez)'):
-                # Asegurar que el directorio de modelos existe
-                os.makedirs(OCR_MODEL_STORAGE, exist_ok=True)
+            with st.spinner('⏳ Cargando motor OCR... (puede tomar unos minutos la primera vez)'):
+                # Inicializar OCR Engine que contiene el modelo mejorado
+                self.ocr_engine = OCREngine()
+                st.success('✅ Motor OCR cargado exitosamente')
                 
-                # Primer intento de inicialización
-                self.reader = easyocr.Reader(
-                    OCR_LANGUAGES,
-                    gpu=OCR_GPU,
-                    model_storage_directory=OCR_MODEL_STORAGE,
-                    download_enabled=True,
-                    verbose=False
-                )
-                st.success('✅ Modelo OCR cargado exitosamente')
-                
-        except PermissionError:
-            st.warning('⚠️ Error de permisos. Reiniciando la carga del modelo...')
-            time.sleep(2)  # Esperar a que el sistema libere recursos
-            try:
-                self.reader = easyocr.Reader(
-                    OCR_LANGUAGES,
-                    gpu=OCR_GPU,
-                    model_storage_directory=OCR_MODEL_STORAGE,
-                    download_enabled=True,
-                    verbose=False
-                )
-                st.success('✅ Modelo OCR cargado exitosamente en el segundo intento')
-            except Exception as e:
-                st.error(f'❌ Error al cargar el modelo OCR: {str(e)}')
-                raise
         except Exception as e:
-            st.error(f'❌ Error inesperado al cargar el modelo OCR: {str(e)}')
+            st.error(f'❌ Error al cargar el motor OCR: {str(e)}')
             raise
 
     def run(self):
@@ -76,7 +64,6 @@ class OCRApp:
         st.title("Extractor de Datos de Facturas")
         st.markdown("""
         ### Este sistema extrae automáticamente:
-        - 📋 Número de Identificación/Matrícula
         - 📅 Fecha de Emisión
         - ⚠️ Fecha de Vencimiento
         - 💰 Total a Pagar
@@ -103,69 +90,63 @@ class OCRApp:
         if st.button("🔍 Procesar Factura"):
             with st.spinner('⏳ Procesando imagen...'):
                 try:
-                    # Convertir imagen
-                    cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+                    # Guardar imagen temporalmente
+                    temp_path = os.path.join('data', 'temp', uploaded_file.name)
+                    os.makedirs(os.path.dirname(temp_path), exist_ok=True)
                     
-                    # Procesar imagen
-                    processed_image = self.image_processor.process(cv_image)
+                    with open(temp_path, 'wb') as f:
+                        f.write(uploaded_file.getbuffer())
                     
-                    # Extraer información
-                    fields = self.extract_text(processed_image)
+                    # Procesar documento con el nuevo procesador
+                    result = self.document_processor.process_document(temp_path)
                     
-                    if fields:
+                    # Limpiar archivo temporal
+                    os.remove(temp_path)
+                    
+                    if result['success']:
                         st.success("✅ Extracción completada")
-                        self.display_results(fields)
+                        self.display_results(result)
                     else:
-                        st.warning("⚠️ No se pudo extraer información. Intente con otra imagen.")
-                        
+                        st.warning(f"⚠️ No se pudo extraer información: {result.get('error', 'Error desconocido')}")
+                    
                 except Exception as e:
                     st.error(f"❌ Error procesando la imagen: {str(e)}")
 
-    def extract_text(self, image) -> Dict[str, Any]:
-        """Extrae texto de la imagen procesada."""
-        try:
-            # Mejorar contraste
-            enhanced = cv2.convertScaleAbs(image, alpha=1.5, beta=0)
-            
-            # Extraer texto
-            results = self.reader.readtext(enhanced)
-            
-            # Convertir resultados
-            text_blocks = [
-                {
-                    'text': text,
-                    'confidence': conf,
-                    'bbox': box
-                }
-                for box, text, conf in results
-                if conf > 0.5
-            ]
-            
-            # Extraer campos
-            return self.feature_extractor.extract_fields(text_blocks)
-            
-        except Exception as e:
-            st.error(f"Error en extracción: {str(e)}")
-            return {}
-
-    def display_results(self, fields: Dict[str, Any]):
+    def display_results(self, result: Dict[str, Any]):
         """Muestra los resultados extraídos."""
         st.subheader("Información Extraída")
         
-        campos = {
-            'identificacion': ('📋 Número de Identificación/Matrícula', 'No se encontró número de identificación'),
-            'fecha_inicio': ('📅 Fecha de Emisión', 'No se encontró fecha de emisión'),
-            'fecha_fin': ('⚠️ Fecha de Vencimiento', 'No se encontró fecha de vencimiento'),
-            'total': ('💰 Total a Pagar', 'No se encontró monto total')
-        }
+        # Extraer los campos del resultado
+        fields = result.get('extracted_fields', {})
         
-        for campo, (label, mensaje_error) in campos.items():
-            if campo in fields and fields[campo]:
-                valor = f"${fields[campo]}" if campo == 'total' else fields[campo]
-                st.write(f"{label}: **{valor}**")
-            else:
-                st.info(f"ℹ️ {mensaje_error}")
-
+        # Mostrar fecha si se encontró
+        if 'fecha_expedicion' in fields and fields['fecha_expedicion']:
+            st.write(f"📅 Fecha: **{fields['fecha_expedicion']}**")
+        else:
+            st.info("ℹ️ No se encontró fecha")
+        
+        # Mostrar total si se encontró
+        if 'total' in fields and fields['total']:
+            valor = f"${fields['total']}" if not str(fields['total']).startswith('$') else fields['total']
+            st.write(f"💰 Total: **{valor}**")
+        else:
+            st.info("ℹ️ No se encontró total")
+        
+        # Mostrar información de depuración
+        with st.expander("Mostrar información de depuración"):
+            # Mostrar campos extraídos
+            st.subheader("Campos Extraídos")
+            st.json(fields)
+            
+            # Mostrar resultado de validación
+            st.subheader("Validación")
+            st.write(result.get('validation', {}))
+            
+            # Mostrar texto raw
+            if 'raw_text' in result:
+                st.subheader("Texto extraído")
+                st.text(result['raw_text'])
+                    
 if __name__ == "__main__":
     app = OCRApp()
     app.run()

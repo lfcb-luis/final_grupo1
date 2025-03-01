@@ -36,17 +36,60 @@ class DataCleaner:
         Estandariza el formato de fecha.
         
         Args:
-            date_str (str): String de fecha (ej: '18-Abr-2024' o '17/MAY/2024')
+            date_str (str): String de fecha a estandarizar
             
         Returns:
             str: Fecha en formato YYYY-MM-DD
         """
-        for date_format in DATE_FORMATS:
+        # Formatos adicionales para manejar más casos
+        additional_formats = [
+            '%d-%b-%Y',    # 18-Abr-2024
+            '%d-%b-%y',    # 18-Abr-24
+            '%d-%B-%Y',    # 18-Abril-2024
+            '%d/%b/%Y',    # 18/Abr/2024
+            '%d/%B/%Y',    # 18/Abril/2024
+            '%Y-%m-%d',    # 2024-04-18
+            '%d/%m/%Y',    # 18/04/2024
+            '%m/%d/%Y',    # 04/18/2024
+            '%d-%m-%Y',    # 18-04-2024
+            '%Y/%m/%d',    # 2024/04/18
+        ]
+        
+        # Combinar formatos existentes con formatos adicionales
+        all_formats = additional_formats + list(DATE_FORMATS)
+        
+        # Normalizar el string de fecha (convertir a minúsculas)
+        date_str = date_str.lower()
+        
+        # Mapeo de abreviaturas de meses en español
+        month_mapping = {
+            'ene': 'enero',
+            'feb': 'febrero',
+            'mar': 'marzo',
+            'abr': 'abril',
+            'may': 'mayo',
+            'jun': 'junio',
+            'jul': 'julio',
+            'ago': 'agosto',
+            'sep': 'septiembre',
+            'oct': 'octubre',
+            'nov': 'noviembre',
+            'dic': 'diciembre'
+        }
+        
+        # Reemplazar abreviaturas
+        for abbr, full in month_mapping.items():
+            date_str = date_str.replace(abbr, full)
+        
+        # Intentar parsear con múltiples formatos
+        for date_format in all_formats:
             try:
                 date_obj = datetime.strptime(date_str, date_format)
                 return date_obj.strftime('%Y-%m-%d')
             except ValueError:
                 continue
+        
+        # Si no se reconoce ningún formato
         raise ValueError(f"Formato de fecha no reconocido: {date_str}")
 
     @staticmethod
