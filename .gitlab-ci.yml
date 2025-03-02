@@ -48,4 +48,31 @@ build-and-push:
         docker build -t $DOCKER_IMAGE_NAME:dev -t $DOCKER_IMAGE_NAME:$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA .
         docker push $DOCKER_IMAGE_NAME:dev
         docker push $DOCKER_IMAGE_NAME:$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA
-        echo "Imagen subida a
+        echo "Imagen subida a Docker Hub con tags 'dev' y '$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA'"
+      fi
+  only:
+    - main
+    - dev
+
+# Job para desplegar la aplicación (si es necesario)
+deploy-application:
+  stage: deploy
+  image: docker:20.10.16
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
+  script:
+    - |
+      if [ "$CI_COMMIT_REF_NAME" = "main" ]; then
+        docker pull $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+      else
+        docker pull $DOCKER_IMAGE_NAME:$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA
+      fi
+    # Aquí puedes añadir comandos para desplegar tu aplicación
+    - echo "Aplicación desplegada correctamente"
+  only:
+    - main
+    - dev
+  # Opcional: solo ejecutar manualmente
+  when: manual
