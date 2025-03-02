@@ -3,7 +3,6 @@ image: python:3.9
 stages:
   - test
   - build
-  - push
   - deploy
 
 variables:
@@ -28,65 +27,25 @@ test-job:
     - main
     - dev
 
-# Job para construir la imagen Docker
-build-docker-image:
+# Job combinado para construir y subir la imagen Docker
+build-and-push:
   stage: build
   image: docker:20.10.16
   services:
     - docker:20.10.16-dind
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
-  script:
-    - echo "DOCKER_HUB_USER = ${DOCKER_HUB_USER}"
-    - echo "DOCKER_IMAGE_NAME = ${DOCKER_IMAGE_NAME}"
-    - echo "CI_COMMIT_REF_NAME = ${CI_COMMIT_REF_NAME}"
-    - |
-      if [ "$CI_COMMIT_REF_NAME" = "main" ]; then
-        docker build -t ${DOCKER_HUB_USER}/proyecto_ocr:latest -t ${DOCKER_HUB_USER}/proyecto_ocr:$CI_COMMIT_SHORT_SHA .
-      else
-        docker build -t ${DOCKER_HUB_USER}/proyecto_ocr:dev -t ${DOCKER_HUB_USER}/proyecto_ocr:$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA .
-      fi
-  only:
-    - main
-    - dev
-
-push-to-dockerhub:
-  stage: push
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
   before_script:
     - docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
   script:
     - |
       if [ "$CI_COMMIT_REF_NAME" = "main" ]; then
+        docker build -t $DOCKER_IMAGE_NAME:latest -t $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
         docker push $DOCKER_IMAGE_NAME:latest
         docker push $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
         echo "Imagen subida a Docker Hub con tags 'latest' y '$CI_COMMIT_SHORT_SHA'"
       else
+        docker build -t $DOCKER_IMAGE_NAME:dev -t $DOCKER_IMAGE_NAME:$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA .
         docker push $DOCKER_IMAGE_NAME:dev
         docker push $DOCKER_IMAGE_NAME:$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA
-        echo "Imagen subida a Docker Hub con tags 'dev' y '$CI_COMMIT_REF_NAME-$CI_COMMIT_SHORT_SHA'"
-      fi
-  only:
-    - main
-    - dev
-
-# Job para desplegar la aplicación (si es necesario)
-deploy-application:
-  stage: deploy
-  image: docker:20.10.16
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
-  before_script:
-    - docker login -u $DOCKER_HUB_USER -p $DOCKER_HUB_PASSWORD
-  script:
-    - docker pull $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA
-    # Aquí puedes añadir comandos para desplegar tu aplicación
-    - echo "Aplicación desplegada correctamente con la imagen $DOCKER_IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-  only:
-    - main
-    - dev
-  # Opcional: solo ejecutar manu
+        echo "Imagen subida a
